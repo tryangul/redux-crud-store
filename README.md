@@ -256,16 +256,26 @@ This is a slightly airbrushed representation of what the state.models key in you
                    record: { id: 15001, ... } }
         },
         actionStatus: {
-          create: { pending: false, id: null, isSuccess: true, payload: null },
-          update: { pending: false,
-                    id: 8,
-                    isSuccess: false, 
-                    payload: {
-                      message: "Invalid id",
-                      errors: { "editor_id": "not an editor" }
-                    }
-                  },
-          delete: { pending: true, id: 45 }
+          create: {
+            1: { pending: false, id: null, isSuccess: true, payload: null }
+          },
+          update: {
+            1: {
+              pending: false,
+              id: 8,
+              isSuccess: false,
+              payload: {
+                message: "Invalid id",
+                errors: {
+                  editor_id: "not an editor"
+                }
+              }
+            }
+          },
+          delete: {
+            1: { pending: true, id: 44 },
+            2: { pending: true, id: 45 }
+          }
         }
       },
       comments: {

@@ -1,6 +1,8 @@
 /* @flow */
 /* global T $Shape */
 
+import uuid from 'node-uuid'
+
 import {
   FETCH, FETCH_SUCCESS, FETCH_ERROR,
   FETCH_ONE, FETCH_ONE_SUCCESS, FETCH_ONE_ERROR,
@@ -66,12 +68,15 @@ export function createRecord<T>(model: string, path: string, data: $Shape<T> = {
                                 params: Object = {}, opts: Opts = {}
                                ): CrudAction<T> {
   const method = opts.method || 'post'
+  const req_uuid = opts.req_uuid || uuid.v4()
+
   return {
     type: CREATE,
     meta: {
       success: CREATE_SUCCESS,
       failure: CREATE_ERROR,
-      model
+      model,
+      req_uuid
     },
     payload: {
       method,
@@ -86,13 +91,16 @@ export function updateRecord<T>(model: string, id: ID, path: string, data: $Shap
                                 params: Object = {}, opts: Opts = {}
                                ): CrudAction<T> {
   const method = opts.method || 'put'
+  const req_uuid = opts.req_uuid || uuid.v4()
+
   return {
     type: UPDATE,
     meta: {
       success: UPDATE_SUCCESS,
       failure: UPDATE_ERROR,
       model,
-      id
+      id,
+      req_uuid
     },
     payload: {
       method,
@@ -107,13 +115,16 @@ export function deleteRecord(model: string, id: ID, path: string,
                              params: Object = {}, opts: Opts = {}
                             ): CrudAction<void> {
   const method = opts.method || 'delete'
+  const req_uuid = opts.req_uuid || uuid.v4()
+
   return {
     type: DELETE,
     meta: {
       success: DELETE_SUCCESS,
       failure: DELETE_ERROR,
       model,
-      id
+      id,
+      req_uuid
     },
     payload: {
       method,
@@ -123,11 +134,12 @@ export function deleteRecord(model: string, id: ID, path: string,
   }
 }
 
-export function clearActionStatus(model: string, action: 'create' | 'update' | 'delete'
+// TODO uuid flow typing
+export function clearActionStatus(model: string, action: 'create' | 'update' | 'delete', req_uuid: string
                                  ): ClearActionStatus {
   return {
     type: CLEAR_ACTION_STATUS,
-    payload: { model, action }
+    payload: { model, action, req_uuid }
   }
 }
 

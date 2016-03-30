@@ -2,6 +2,8 @@
 
 import { fromJS } from 'immutable'
 import isEqual from 'lodash.isequal'
+import uuid from 'node-uuid'
+
 import {
   FETCH, FETCH_SUCCESS, FETCH_ERROR,
   FETCH_ONE, FETCH_ONE_SUCCESS, FETCH_ONE_ERROR,
@@ -166,47 +168,54 @@ function collectionsReducer(state = collectionsInitialState, action) {
 }
 
 function actionStatusReducer(state = actionStatusInitialState, action) {
+  const { req_uuid } = action.meta
   switch (action.type) {
     case CLEAR_ACTION_STATUS:
       return state.set(action.payload.action, fromJS({}))
     case CREATE:
-      return state.set('create', fromJS({
+      return state.setIn(['create', req_uuid], fromJS({
         pending: true,
-        id: null
+        id: null,
+        req_uuid
       }))
     case CREATE_SUCCESS:
     case CREATE_ERROR:
-      return state.set('create', fromJS({
+      return state.setIn(['create', req_uuid], fromJS({
         pending: false,
         id: action.payload.id,
         isSuccess: !action.error,
-        payload: action.payload
+        payload: action.payload,
+        req_uuid
       }))
     case UPDATE:
-      return state.set('update', fromJS({
+      return state.setIn(['update', req_uuid], fromJS({
         pending: true,
-        id: action.meta.id
+        id: action.meta.id,
+        req_uuid
       }))
     case UPDATE_SUCCESS:
     case UPDATE_ERROR:
-      return state.set('update', fromJS({
+      return state.setIn(['update', req_uuid], fromJS({
         pending: false,
         id: action.meta.id,
         isSuccess: !action.error,
-        payload: action.payload
+        payload: action.payload,
+        req_uuid
       }))
     case DELETE:
-      return state.set('delete', fromJS({
+      return state.setIn(['delete', req_uuid], fromJS({
         pending: true,
-        id: action.meta.id
+        id: action.meta.id,
+        req_uuid
       }))
     case DELETE_SUCCESS:
     case DELETE_ERROR:
-      return state.set('delete', fromJS({
+      return state.setIn(['delete', req_uuid], fromJS({
         pending: false,
         id: action.meta.id,
         isSuccess: !action.error,
-        payload: action.payload // probably null...
+        payload: action.payload, // probably null...
+        req_uuid
       }))
     default:
       return state

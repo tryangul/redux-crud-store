@@ -174,9 +174,9 @@ type ActionStatusSelection<T> = {
 }
 
 export function selectActionStatus<T>(modelName: Model, crud: State,
-                                      action: 'create' | 'update' | 'delete'
-                                     ): ActionStatusSelection<T> {
-  const rawStatus = (crud.getIn([modelName, 'actionStatus', action]) || fromJS({})).toJS()
+                                      action: 'create' | 'update' | 'delete',
+                                      req_uuid: uuid): ActionStatusSelection<T> {
+  const rawStatus = (crud.getIn([modelName, 'actionStatus', action, req_uuid]) || fromJS({})).toJS()
   const { pending = false, id = null, isSuccess = null, payload = null } = rawStatus
 
   if (pending === true) {
@@ -196,16 +196,9 @@ export function selectActionStatus<T>(modelName: Model, crud: State,
   }
 }
 
-
-export function selectNiceActionStatus<T>(modelName: Model, crud: State,
-                                          action: 'create' | 'update' | 'delete'
-                                         ): ActionStatusSelection<T> {
-  // eslint-disable-next-line no-console
-  console.warn('This function is deprecated and will be removed in 5.0.0.')
-  // eslint-disable-next-line no-console
-  console.warn('Please replace it with selectActionStatus, which has the ')
-  // eslint-disable-next-line no-console
-  console.warn('same functionality.')
-
-  return selectActionStatus(modelName, crud, action)
+export function selectAllActionStatuses(modelName, crud, action) {
+  const statuses = crud.getIn([modelName, 'actionStatus', action]) || fromJS({})
+  return Object.keys(statuses.toJS()).map(uuid => {
+    return selectActionStatus(modelName, crud, action, uuid)
+  }
 }
