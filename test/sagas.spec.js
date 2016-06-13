@@ -4,11 +4,16 @@ import expect from 'expect'
 declare var describe
 declare var it
 
-import { call } from 'redux-saga/effects'
-import { apiGeneric } from '../src/sagas'
+// Import some internal functions from 'redux-saga' so that we can run
+// multi-level sagas in isolation.
+import { emitter } from 'redux-saga/lib/internal/channel'
+import proc from 'redux-saga/lib/internal/proc'
+
+import { call, put } from 'redux-saga/effects'
+import crudSaga, { apiGeneric } from '../src/sagas'
 
 import {
-  FETCH_SUCCESS, FETCH_ERROR
+  FETCH, FETCH_SUCCESS, FETCH_ERROR
 } from '../src/actionTypes'
 import {
   fetchCollection, fetchRecord, createRecord, updateRecord, deleteRecord
@@ -59,6 +64,40 @@ const apiClient = {
 function getAction(effect) {
   return effect.PUT.action ? effect.PUT.action : effect.PUT
 }
+
+type Channel = {
+  emit: (action: Object) => void,
+  subscribe: (fn: (action: Object) => void) => void,
+}
+
+function runSaga(saga: Function, ...args): Channel {
+  const { emit, subscribe } = emitter()
+  proc(
+    saga.apply(null, args),
+    subscribe,
+    action => { emit(action) }
+  )
+  return { emit, subscribe }
+}
+
+describe('crudSaga', () => {
+  it('invokes API client in response to FETCH events', () => {
+    let apiCalled = false
+    const client = {
+      get(path, { params }) {
+        apiCalled = true
+        expect(path).toBe('/widgets')
+        expect(params).toBeAn('object')
+        expect(params.page).toBe(1)
+      }
+    }
+    const { emit, subscribe } = runSaga(crudSaga(client))
+
+    emit(fetchWidgets(1))
+
+    expect(apiCalled).toBe(true)
+  })
+})
 
 describe('apiGeneric', () => {
   it('invokes API client methods', () => {
