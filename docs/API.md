@@ -104,7 +104,8 @@ On success, byId will be updated and all collections will be marked as needing a
 - data (default {}) is the PUT data that will be passed to your API client
 - params (default {}) are the query params that will be passed to your API client
 - opts (default {}) can have any of the following keys, with the stated effect:
-- 'method': overrides the method of the request from the default of 'put'
+  - 'method': overrides the method of the request from the default of 'put'
+  - 'schema': normalizr schema to apply to results
 
 On success, byId will be updated. Additionally, actionStatus['update'] will be set.
 
@@ -114,7 +115,8 @@ On success, byId will be updated. Additionally, actionStatus['update'] will be s
 - path (required) is the path that will be passed to your API cient
 - params (default {}) are the query params that will be passed to your API client
 - opts (default {}) can have any of the following keys, with the stated effect:
-- 'method': overrides the method of the request from the default of 'del'
+  - 'method': overrides the method of the request from the default of 'del'
+  - 'schema': normalizr schema to process effects properly
 
 On success, byId will be updated and all collections will be marked as needing a refresh. Additionally, actionStatus['delete'] will be set.
 

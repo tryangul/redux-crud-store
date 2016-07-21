@@ -67,6 +67,8 @@ If you like combining your reducers in one file, here's what that file might loo
 
 Now that the boilerplate is out of the way, you can start being productive with your own API. A given model might use very predictable endpoints, or it might need a lot of logic. You can make your action creators very quickly by basing them off of redux-crud-store's API:
 
+    import schema from '../schemas/post' // normalizr schema
+    import arrayOf from 'normalizr'
     import {
       fetchCollection, fetchRecord, createRecord, updateRecord, deleteRecord
     } from 'redux-crud-store'
@@ -75,19 +77,19 @@ Now that the boilerplate is out of the way, you can start being productive with 
     const PATH = '/posts'
 
     export function fetchPosts(params = {}) {
-      return fetchCollection(MODEL, PATH, params)
+      return fetchCollection(MODEL, PATH, params, { schema: arrayOf(schema) })
     }
 
     export function fetchPost(id, params = {}) {
-      return fetchRecord(MODEL, id, `${PATH}/${id}`, params)
+      return fetchRecord(MODEL, id, `${PATH}/${id}`, params, { schema })
     }
 
     export function createPost(data = {}) {
-      return createRecord(MODEL, PATH, data)
+      return createRecord(MODEL, PATH, data, {}, { schema })
     }
 
     export function updatePost(id, data = {}) {
-      return updateRecord(MODEL, id, `${PATH}/${id}`, data)
+      return updateRecord(MODEL, id, `${PATH}/${id}`, data, {}, { schema })
     }
 
     export function deletePost(id) {
