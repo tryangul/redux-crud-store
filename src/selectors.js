@@ -2,7 +2,6 @@
 /* global T */
 /* eslint no-use-before-define: 0 */
 
-import { fromJS, List, Map } from 'immutable'
 import isEqual from 'lodash.isequal'
 import {
   FETCH, FETCH_ONE, CREATE, UPDATE, DELETE
@@ -40,6 +39,17 @@ function recent(fetchTime, opts: SelectorOpts = {}) {
   return Date.now() - interval < fetchTime
 }
 
+function getIn(obj, keys, defaultValue) {
+  const key = keys[0]
+  if (!(key in obj)) {
+    return defaultValue
+  }
+  if (keys.length === 1) {
+    return obj[key]
+  }
+  return getIn(obj[key], keys.slice(1), defaultValue)
+}
+
 export function select<T>(action: CrudAction<T>, crud: State, opts: SelectorOpts = {}
                          ): Selection<T> {
   const model = action.meta.model
@@ -66,16 +76,16 @@ export function select<T>(action: CrudAction<T>, crud: State, opts: SelectorOpts
 
 export function selectCollection<T>(modelName: Model, crud: State, params: Object = {},
                                     opts: SelectorOpts = {}): Selection<T> {
-  const model = crud.getIn([modelName], Map())
-  const collection = model.get('collections', List()).find(coll => (
-    isEqual(coll.get('params').toJS(), params)
+  const model = crud[modelName] || {}
+  const collection = getIn(model, ['collections'], []).find(coll => (
+    isEqual(coll.params, params)
   ))
 
   const isLoading = ({ needsFetch }) => ({
     otherInfo: {},
     data: ([]:any),
     isLoading: true,
-    ...(collection ? { error: collection.get('error') } : {}),
+    ...(collection ? { error: collection.error } : {}),
     needsFetch
   })
 
@@ -84,7 +94,7 @@ export function selectCollection<T>(modelName: Model, crud: State, params: Objec
     return isLoading({ needsFetch: true })
   }
 
-  const fetchTime = collection.get('fetchTime')
+  const { fetchTime } = collection
   if (fetchTime === 0) {
     return isLoading({ needsFetch: false })
   } else if (!recent(fetchTime, opts)) {
@@ -94,9 +104,9 @@ export function selectCollection<T>(modelName: Model, crud: State, params: Objec
   // search the records to ensure they're all recent
   // TODO can we make this faster?
   let itemNeedsFetch = null
-  collection.get('ids', fromJS([])).forEach((id) => {  // eslint-disable-line consistent-return
-    const item = model.getIn(['byId', id.toString()], Map())
-    if (!recent(item.get('fetchTime'), opts)) {
+  ;(collection.ids || []).forEach((id) => {  // eslint-disable-line consistent-return
+    const item = getIn(model, ['byId', id.toString()], {})
+    if (!recent(item.fetchTime, opts)) {
       itemNeedsFetch = item
       return false
     }
@@ -108,43 +118,43 @@ export function selectCollection<T>(modelName: Model, crud: State, params: Objec
     return isLoading({ needsFetch: true })
   }
 
-  const data = collection.get('ids', fromJS([])).map((id) =>
-    model.getIn(['byId', id.toString(), 'record'])
-  ).toJS()
+  const data = (collection.ids || []).map((id) =>
+    getIn(model, ['byId', id.toString(), 'record'])
+  )
 
   return {
-    otherInfo: collection.get('otherInfo', Map()).toJS(),
+    otherInfo: collection.otherInfo || {},
     data,
     isLoading: false,
     needsFetch: false,
-    ...(collection ? { error: collection.get('error') } : {})
+    ...(collection ? { error: collection.error } : {})
   }
 }
 
 function getRecordSelection<T>(modelName: Model, id: ID, crud: State, opts: SelectorOpts = {}
                               ): Selection<T> {
   const id_str = id ? id.toString() : undefined
-  const model = crud.getIn([modelName, 'byId', id_str])
+  const model = getIn(crud, [modelName, 'byId', id_str])
 
-  if (model && model.get('fetchTime') === 0) {
+  if (model && model.fetchTime === 0) {
     return { isLoading: true, needsFetch: false, error: new Error('Loading...') }
   }
   if (id === undefined || model === undefined ||
-      !recent(model.get('fetchTime'), opts)) {
+      !recent(model.fetchTime, opts)) {
     return { isLoading: true, needsFetch: true, error: new Error('Loading...') }
   }
 
-  if (model.get('error') !== null) {
+  if (model.error !== null) {
     return {
       isLoading: false,
       needsFetch: false,
-      error: model.get('error')
+      error: model.error
     }
   }
   return {
     isLoading: false,
     needsFetch: false,
-    data: model.get('record').toJS()
+    data: model.record
   }
 }
 
@@ -176,7 +186,7 @@ type ActionStatusSelection<T> = {
 export function selectActionStatus<T>(modelName: Model, crud: State,
                                       action: 'create' | 'update' | 'delete'
                                      ): ActionStatusSelection<T> {
-  const rawStatus = (crud.getIn([modelName, 'actionStatus', action]) || fromJS({})).toJS()
+  const rawState = getIn(crud, [modelName, 'actionStatus', action], {})
   const { pending = false, id = null, isSuccess = null, payload = null } = rawStatus
 
   if (pending === true) {

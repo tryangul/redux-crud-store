@@ -1,5 +1,4 @@
 import expect from 'expect'
-import { fromJS } from 'immutable'
 
 import {
   fetchCollection, fetchRecord, createRecord, updateRecord, deleteRecord
@@ -10,11 +9,33 @@ import {
   selectRecordOrEmptyObject
 } from '../src/selectors'
 
+const setIn = (obj, keys, value) => {
+  const key = keys[0]
+  if (keys.length === 1) {
+    return Object.assign({}, obj, {
+      [key]: value
+    })
+  }
+  return setIn(obj[key], keys.slice(1), value)
+}
+
+const deleteIn = (obj, keys) => {
+  const key = keys[0]
+  if (keys.length === 1) {
+    const newObj = Object.assign({}, obj)
+    delete newObj[key]
+    return newObj
+  }
+  return Object.assign({}, obj, {
+    [key]: deleteIn(obj[key], keys.slice(1))
+  })
+}
+
 const now = Date.now()
 const yesterday = now - 24 * 60 * 60 * 1000
 
 const modelName = 'widgets'
-const crud = fromJS({
+const crud = {
   widgets: {
     collections: [
       {
@@ -46,7 +67,7 @@ const crud = fromJS({
     update: {},
     delete: {}
   }
-})
+}
 
 const expectedOutput = {
   otherInfo: {
@@ -139,7 +160,7 @@ describe('selectCollection', () => {
       const loadFailed = new Error('500 Interval Server Error')
       const fetchError = selectCollection(
         modelName,
-        crud.setIn([modelName, 'collections', 0, 'error'], loadFailed),
+        setIn(crud, [modelName, 'collections', 0, 'error'], loadFailed),
         { page: 1 }
       )
       expect(fetchError.error).toEqual(loadFailed)
@@ -149,7 +170,7 @@ describe('selectCollection', () => {
     it('sets isLoading and needsFetch to true', () => {
       const fetchTimeYesterday = selectCollection(
         modelName,
-        crud.setIn([modelName, 'collections', 0, 'fetchTime'], yesterday),
+        setIn(crud, [modelName, 'collections', 0, 'fetchTime'], yesterday),
         { page: 1 }
       )
       expect(fetchTimeYesterday.isLoading).toEqual(true)
@@ -160,7 +181,7 @@ describe('selectCollection', () => {
     it('sets isLoading to true and needsFetch to false', () => {
       const fetchTimeZero = selectCollection(
         modelName,
-        crud.setIn([modelName, 'collections', 0, 'fetchTime'], 0),
+        setIn(crud, [modelName, 'collections', 0, 'fetchTime'], 0),
         { page: 1 }
       )
       expect(fetchTimeZero.isLoading).toEqual(true)
@@ -187,7 +208,7 @@ describe('selectRecord', () => {
 
     describe('model has an error', () => {
       const loadFailed = new Error('500 Interval Server Error')
-      const errorModels = crud.setIn([modelName, 'byId', '1', 'error'], loadFailed)
+      const errorModels = setIn(crud, [modelName, 'byId', '1', 'error'], loadFailed)
       it('renders the error', () => {
         expect(selectRecord(modelName, 1, errorModels)).toEqual({
           isLoading: false,
@@ -197,7 +218,7 @@ describe('selectRecord', () => {
       })
     })
     describe('model is out of date', () => {
-      const oldModels = crud.setIn([modelName, 'byId', '1', 'fetchTime'], yesterday)
+      const oldModels = setIn(crud, [modelName, 'byId', '1', 'fetchTime'], yesterday)
       it('returns "needs fetch"', () => {
         const get = selectRecord(modelName, 1, oldModels)
         expect(get.isLoading).toEqual(true)
@@ -207,7 +228,7 @@ describe('selectRecord', () => {
     })
   })
   describe('model does not exist in store', () => {
-    const missingModels = crud.deleteIn([modelName, 'byId', '1'])
+    const missingModels = deleteIn(crud, [modelName, 'byId', '1'])
     it('returns "needs fetch"', () => {
       const get = selectRecord(modelName, 1, missingModels)
       expect(get.isLoading).toEqual(true)
@@ -216,7 +237,7 @@ describe('selectRecord', () => {
     })
   })
   describe('fetchTime is 0', () => {
-    const loadingModels = crud.setIn([modelName, 'byId', '1', 'fetchTime'], 0)
+    const loadingModels = setIn(crud, [modelName, 'byId', '1', 'fetchTime'], 0)
     it('returns "loading"', () => {
       const get = selectRecord(modelName, 1, loadingModels)
       expect(get.isLoading).toEqual(true)
@@ -232,11 +253,11 @@ describe('selectRecordOrEmptyObject', () => {
   })
   it('empty object if model has an error', () => {
     const loadFailed = new Error('500 Interval Server Error')
-    const errorModels = crud.setIn([modelName, 'byId', '1', 'error'], loadFailed)
+    const errorModels = setIn(crud, [modelName, 'byId', '1', 'error'], loadFailed)
     expect(selectRecordOrEmptyObject(modelName, 1, errorModels)).toEqual({})
   })
   it('empty object if model is loading', () => {
-    const oldModels = crud.setIn([modelName, 'byId', '1', 'fetchTime'], yesterday)
+    const oldModels = setIn(crud, [modelName, 'byId', '1', 'fetchTime'], yesterday)
     expect(selectRecordOrEmptyObject(modelName, 1, oldModels)).toEqual({})
   })
 })

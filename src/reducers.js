@@ -1,6 +1,5 @@
 /* eslint no-case-declarations: 0 */
 
-import { fromJS } from 'immutable'
 import isEqual from 'lodash.isequal'
 import {
   FETCH, FETCH_SUCCESS, FETCH_ERROR,
@@ -16,32 +15,53 @@ import {
  * SECTION: initial states
  */
 
-const byIdInitialState = fromJS({})
+const byIdInitialState = {}
 
-const collectionInitialState = fromJS({
+const collectionInitialState = {
   params: {},
   otherInfo: {},
   ids: [],
   fetchTime: null,
   error: null
-})
+}
 
-const collectionsInitialState = fromJS([])
+const collectionsInitialState = []
 
-const actionStatusInitialState = fromJS({
+const actionStatusInitialState = {
   create: {},
   update: {},
   delete: {}
-})
+}
 
-const modelInitialState = fromJS({
+const modelInitialState = {
   byId: byIdInitialState,
   collections: collectionsInitialState,
   actionStatus: actionStatusInitialState
-})
+}
 
 // holds a number of models, each of which are strucured like modelInitialState
-const initialState = fromJS({})
+const initialState = {}
+
+/*
+ * SECTION: Helpers
+ */
+
+const updateIn(obj, keys, updater, notSetValue) {
+  if (keys.length === 0) {
+    throw new Error('updateIn needs at least one key')
+  }
+  if (keys.length === 1) {
+    const key = keys[0]
+    const newValue = obj.key ? updater(obj[key]) : notSetValue
+    return Object.assign({}, obj, {
+      [key]: newValue
+    })
+  }
+  const key = keys[0]
+  return Object.assign({}, obj, {
+    [key]: updateIn(obj, keys.slice(1), updater)
+  })
+}
 
 /*
  * SECTION: reducers
@@ -50,53 +70,59 @@ const initialState = fromJS({})
 // server data is canonical, so blast away the old data
 function byIdReducer(state = byIdInitialState, action) {
   const id = action.meta ? action.meta.id : undefined
+  const newState = Object.assign({}, state)
   switch (action.type) {
     case FETCH_SUCCESS:
-      const data = state.toJS()
+      const data = state
       const payload = ('data' in action.payload) ? action.payload.data : action.payload
-      payload.forEach((record) => {
-        data[record.id] = {
+      action.payload.data.forEach((record) => {
+        newState[record.id] = {
           record,
           fetchTime: action.meta.fetchTime,
           error: null
         }
       })
-      return fromJS(data)
+      return newState
     case FETCH_ONE:
-      return state.setIn([id.toString(), 'fetchTime'], 0)
-                  .setIn([id.toString(), 'error'], null)
-                  .setIn([id.toString(), 'record'], null)
+      newState[id.toString()] = {
+        fetchTime: 0,
+        error: null,
+        record: null
+      }
+      return newState
     case FETCH_ONE_SUCCESS:
-      return state.setIn([id.toString(), 'fetchTime'], action.meta.fetchTime)
-                  .setIn([id.toString(), 'error'], null)
-                  .setIn([id.toString(), 'record'], fromJS(action.payload))
+      newState[id.toString()] = {
+        fetchTime: action.meta.fetchTime,
+        error: null,
+        record: action.payload
+      }
+      return newState
     case FETCH_ONE_ERROR:
-      return state.setIn([id.toString(), 'fetchTime'], action.meta.fetchTime)
-                  .setIn([id.toString(), 'error'], action.payload)
-                  .setIn([id.toString(), 'record'], null)
+      newState[id.toString()] = {
+        fetchTime: action.meta.fetchTime,
+        error: action.payload,
+        record: null
+      }
+      return newState
     case CREATE_SUCCESS:
-      const cid = action.payload.id
-      return state.set(action.payload.id.toString(), fromJS({
+      newState[action.payload.id.toString()] = {
         record: action.payload,
         fetchTime: action.meta.fetchTime,
         error: null
-      }))
+      }
+      return newState
     case UPDATE:
       return state // don't change fetchTime, or it'll invalidate collections
     case UPDATE_SUCCESS:
-      return state.set(id.toString(), fromJS({
+      newState[id.toString()] = {
         record: action.payload,
         fetchTime: action.meta.fetchTime,
         error: null
-      }))
+      }
+      return newState
     case DELETE_SUCCESS:
-      return state.delete(id.toString())
-    case GARBAGE_COLLECT:
-      const tenMinutesAgo = action.meta.now - 10 * 60 * 1000
-      return state.filter(collection => (
-        collection.get('fetchTime') > tenMinutesAgo ||
-          collection.get('fetchTime') === null
-      ))
+      delete newState[id.toString()]
+      return newState
     default:
       return state
   }
@@ -106,108 +132,135 @@ function byIdReducer(state = byIdInitialState, action) {
  * Note: fetchTime of null means "needs fetch"
  */
 function collectionReducer(state = collectionInitialState, action) {
+  const newState = Object.assign(state, {})
   switch (action.type) {
     case FETCH:
-      return state.set('params', fromJS(action.meta.params))
-                  .set('fetchTime', 0)
-                  .set('error', null)
+      newState.params = action.meta.params
+      newState.fetchTime = 0
+      newState.error = null
+      return newState
     case FETCH_SUCCESS:
       const originalPayload = action.payload || {}
       const payload = ('data' in originalPayload) ? action.payload.data : action.payload
       const otherInfo = ('data' in originalPayload) ? originalPayload : {}
       const ids = payload.map((elt) => elt.id)
-      return state.set('params', fromJS(action.meta.params))
-                  .set('ids', fromJS(ids))
-                  .set('otherInfo', fromJS(otherInfo).delete('data'))
-                  .set('error', null)
-                  .set('fetchTime', action.meta.fetchTime)
+
+      newState.params = action.meta.params
+      newState.ids = payload.map(elt => elt.id)
+      newState.otherInfo = {}
+      Object.keys(otherInfo).forEach(key => {
+        return if key === 'data'
+        newState.otherInfo[key] = otherInfo[key]
+      })
+      newState.error = null
+      newState.fetchTime = action.meta.fetchTime
+      return newState
     case FETCH_ERROR:
-      return state.set('params', fromJS(action.meta.params))
-                  .set('error', action.payload)
+      newState.params = action.meta.params
+      newState.error = action.payload
+      return newState
     default:
       return state
   }
 }
 
 function collectionsReducer(state = collectionsInitialState, action) {
+  const newState = Object.assign({}, state)
   switch (action.type) {
     case FETCH:
     case FETCH_SUCCESS:
     case FETCH_ERROR:
-      // create the collection for the given params if needed
-      // entry will be undefined or [index, existingCollection]
       if (action.meta.params === undefined) {
         return state
       }
-      const entry = state.findEntry(coll => (
-        isEqual(coll.toJS().params, action.meta.params)
-      ))
-      if (entry === undefined) {
-        return state.push(collectionReducer(undefined, action))
+
+      let indexOfCollection = null
+      for (let index in state) {
+        const collection = state[index]
+        if (isEqual(collection.params, action.meta.params)) {
+          indexOfCollection = index
+          break
+        }
       }
-      const [index, existingCollection] = entry
-      return state.update(index, s => collectionReducer(s, action))
+
+      if (indexOfCollection === null) {
+        return newState.push(collectionReducer(undefined, action))
+      } else {
+        newState[indexOfCollection] = collectionReducer(newState[indexOfCollection])
+        return newState
+      }
     case CREATE_SUCCESS:
     case DELETE_SUCCESS:
       // set fetchTime on all entries to null
-      return state.map((item, idx) => (
-        item.set('fetchTime', null)
+      return state.map(item => (
+        Object.assign({}, item, { fetchTime: null })
       ))
-
     case GARBAGE_COLLECT:
       const tenMinutesAgo = action.meta.now - 10 * 60 * 1000
-      return state.filter(collection => (
-        collection.get('fetchTime') > tenMinutesAgo ||
-          collection.get('fetchTime') === null
-      ))
+      const cleanState = {}
+      Object.keys(state).forEach(key => {
+        if (state[key]['fetchTime'] === null ||
+            state[key]['fetchTime'] > tenMinutesAgo) {
+          cleanState[key] = state[key]
+        }
+      })
+      return cleanState
     default:
       return state
   }
 }
 
 function actionStatusReducer(state = actionStatusInitialState, action) {
+  const newState = Object.assign({}, state)
   switch (action.type) {
     case CLEAR_ACTION_STATUS:
-      return state.set(action.payload.action, fromJS({}))
+      newState[action.payload.action] = {}
+      return newState
     case CREATE:
-      return state.set('create', fromJS({
+      newState['create'] = {
         pending: true,
         id: null
-      }))
+      }
+      return newState
     case CREATE_SUCCESS:
     case CREATE_ERROR:
-      return state.set('create', fromJS({
+      newState['create'] = {
         pending: false,
         id: action.payload.id,
         isSuccess: !action.error,
         payload: action.payload
-      }))
+      }
+      return newState
     case UPDATE:
-      return state.set('update', fromJS({
+      newState['update'] = {
         pending: true,
         id: action.meta.id
-      }))
+      }
+      return newState
     case UPDATE_SUCCESS:
     case UPDATE_ERROR:
-      return state.set('update', fromJS({
+      newState['update'] = {
         pending: false,
         id: action.meta.id,
         isSuccess: !action.error,
         payload: action.payload
-      }))
+      }
+      return newState
     case DELETE:
-      return state.set('delete', fromJS({
+      newState['delete'] = {
         pending: true,
         id: action.meta.id
-      }))
+      }
+      return newState
     case DELETE_SUCCESS:
     case DELETE_ERROR:
-      return state.set('delete', fromJS({
+      newState['delete'] = {
         pending: false,
         id: action.meta.id,
         isSuccess: !action.error,
         payload: action.payload // probably null...
-      }))
+      }
+      return newState
     default:
       return state
   }
@@ -217,60 +270,69 @@ export default function crudReducer(state = initialState, action) {
   const id = action.meta ? action.meta.id : undefined
   switch (action.type) {
     case CLEAR_MODEL_DATA:
-      return state.set(action.payload.model, modelInitialState)
+      newState[action.payload.model] = modelInitialState
+      return newState
     case CLEAR_ACTION_STATUS:
-      return state.updateIn([action.payload.model, 'actionStatus'],
-                          (s) => actionStatusReducer(s, action))
+      return updateIn(state, [action.payload.model, 'actionStatus'],
+                      (s) => actionStatusReducer(s, action))
     case GARBAGE_COLLECT:
-      return state.map(model => (
-               model.update('collections',
-                            (s) => collectionsReducer(s, action))
-                    .update('byId',
-                            (s) => byIdReducer(s, action))
-             ))
+      return state.map(model => {
+        const newState = Object.assign({}, model)
+        newState.collections = collectionsReducer(newState.collections, action)
+        newState.byId = byIdReducer(newState.byId, action)
+        return newState
+      })
     case FETCH:
     case FETCH_SUCCESS:
     case FETCH_ERROR:
-      return state.updateIn([action.meta.model, 'collections'],
-                            (s) => collectionsReducer(s, action))
-                  .updateIn([action.meta.model, 'byId'],
-                            (s) => byIdReducer(s, action))
+      let newState = Object.assign({}, state)
+      newState = updateIn(newState, [action.meta.model, 'collections'],
+                              (s) => collectionsReducer(s, action))
+      newState = updateIn(newState, [action.meta.model, 'byId'],
+                          (s) => byIdReducer(s, action))
+      return newState
     case FETCH_ONE:
     case FETCH_ONE_SUCCESS:
     case FETCH_ONE_ERROR:
-      return state.updateIn([action.meta.model, 'byId'],
-                            (s) => byIdReducer(s, action))
+      return updateIn(state, [action.meta.model, 'byId'], 
+                      (s) => byIdReducer(s, action))
     case CREATE:
-      return state.updateIn([action.meta.model, 'actionStatus'],
-                            (s) => actionStatusReducer(s, action))
+      return updateIn(state, [action.meta.model, 'actionStatus'],
+                      (s) => actionStatusReducer(s, action))
     case CREATE_SUCCESS:
-      return state.updateIn([action.meta.model, 'byId'],
-                            (s) => byIdReducer(s, action))
-                  .updateIn([action.meta.model, 'collections'],
-                            fromJS([]),
-                            (s) => collectionsReducer(s, action))
-                  .updateIn([action.meta.model, 'actionStatus'],
-                            (s) => actionStatusReducer(s, action))
+      let newState = Object.assign({}, state)
+      newState = updateIn(newState, [action.meta.model, 'byId'],
+                              (s) => byIdReducer(s, action))
+      newState = updateIn(newState, [action.meta.model, 'collections'],
+                          (s) => collectionsReducer(s, action),
+                          collectionsInitialState)
+      newState = updateIn(newState, [action.meta.model, 'actionStatus'],
+                          (s) => actionStatuReducer(s, action))
+      return newState
     case CREATE_ERROR:
-      return state.updateIn([action.meta.model, 'actionStatus'],
-                            (s) => actionStatusReducer(s, action))
+      return updateIn(newState, [action.meta.model, 'actionStatus'],
+                      (s) => actionStatusReducer(s, action))
     case UPDATE:
     case UPDATE_SUCCESS:
     case UPDATE_ERROR:
-      return state.updateIn([action.meta.model, 'byId'],
-                            (s) => byIdReducer(s, action))
-                  .updateIn([action.meta.model, 'actionStatus'],
-                            (s) => actionStatusReducer(s, action))
+      let newState = Object.assign({}, state)
+      newState = updateIn(newState, [action.meta.model, 'byId'],
+                              (s) => byIdReducer(s, action))
+      newState = updateIn(newState, [action.meta.model, 'actionStatus'],
+                          (s) => actionStatusReducer(s, action))
+      return newState
     case DELETE:
     case DELETE_SUCCESS:
     case DELETE_ERROR:
-      return state.updateIn([action.meta.model, 'byId'],
-                            (s) => byIdReducer(s, action))
-                  .updateIn([action.meta.model, 'collections'],
-                            fromJS([]),
-                            (s) => collectionsReducer(s, action))
-                  .updateIn([action.meta.model, 'actionStatus'],
-                            (s) => actionStatusReducer(s, action))
+      let newState = Object.assign({}, state)
+      newState = updateIn(newState, [action.meta.model, 'byId'],
+                              (s) => byIdReducer(s, action))
+      newState = updateIn(newState, [action.meta.model, 'collections'],
+                          (s) => collectionsReducer(s, action),
+                          collectionsInitialState)
+      newState = updateIn(newState, [action.meta.model, 'actionStatus'],
+                          (s) => actionStatusReducer(s, action))
+      return newState
     default:
       return state
   }
