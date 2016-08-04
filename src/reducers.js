@@ -53,8 +53,7 @@ function byIdReducer(state = byIdInitialState, action) {
   switch (action.type) {
     case FETCH_SUCCESS:
       const data = state.toJS()
-      const payload = ('data' in action.payload) ? action.payload.data : action.payload
-      payload.forEach((record) => {
+      action.payload.data.forEach((record) => {
         data[record.id] = {
           record,
           fetchTime: action.meta.fetchTime,

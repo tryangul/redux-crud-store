@@ -7307,8 +7307,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  switch (action.type) {
 	    case _actionTypes.FETCH_SUCCESS:
 	      var data = state.toJS();
-	      var payload = 'data' in action.payload ? action.payload.data : action.payload;
-	      payload.forEach(function (record) {
+	      action.payload.data.forEach(function (record) {
 	        data[record.id] = {
 	          record: record,
 	          fetchTime: action.meta.fetchTime,
