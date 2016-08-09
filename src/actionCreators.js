@@ -1,6 +1,8 @@
 /* @flow */
 /* global T $Shape */
 
+import { Schema, arrayOf } from 'normalizr'
+
 import {
   FETCH, FETCH_SUCCESS, FETCH_ERROR,
   FETCH_ONE, FETCH_ONE_SUCCESS, FETCH_ONE_ERROR,
@@ -21,21 +23,33 @@ import type {
 
 type Opts = {
   method?: Method,
-  fetchConfig?: Object
+  fetchConfig?: Object,
+  params?: Object,
+  schema?: Schema
 }
 
-export function fetchCollection<T>(model: string, path: string, params: Object = {}, opts: Opts = {}
+const defaultFetchSchema = model => {
+  const envelope = new Schema('envelope')
+  envelope.define({
+    data: arrayOf(new Schema(model))
+  })
+}
+
+
+export function fetchCollection<T>(model: string, path: string, opts: Opts = {}
                                   ): CrudAction<T[]> {
   const fetchConfig = opts.fetchConfig || undefined
   const method = opts.method || 'get'
+  const params = opts.params || {}
+  const schema = opts.schema || defaultFetchSchema(model)
 
   return {
     type: FETCH,
     meta: {
       success: FETCH_SUCCESS,
       failure: FETCH_ERROR,
-      params,
-      model
+      model,
+      schema
     },
     payload: {
       fetchConfig,

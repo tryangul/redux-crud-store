@@ -1,7 +1,7 @@
 /* eslint no-case-declarations: 0 */
 
 import { fromJS } from 'immutable'
-import isEqual from 'lodash.isequal'
+import { isEqual } from 'lodash'
 import {
   FETCH, FETCH_SUCCESS, FETCH_ERROR,
   FETCH_ONE, FETCH_ONE_SUCCESS, FETCH_ONE_ERROR,

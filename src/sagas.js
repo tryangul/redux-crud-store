@@ -3,6 +3,7 @@
 
 import { takeEvery } from 'redux-saga'
 import { fork, put, call } from 'redux-saga/effects'
+import { get as lodashGet } from 'lodash'
 
 import {
   FETCH, FETCH_ONE, CREATE, UPDATE, DELETE, API_CALL, GARBAGE_COLLECT
@@ -25,10 +26,33 @@ function* garbageCollector() {
   }
 }
 
+const crudNormalize = ([response, headers], action, meta) => {
+  const { model, schema } = action.meta
+  const { params } = action.payload
+
+  const normalized = normalize(response, schema).entities
+  const envelope = lodashGet(normalized, ['envelope', 'undefined'])
+  const ids = Object.keys(normalized[model])
+  const byId = normalized[model]
+
+  return {
+    type: action.meta.success,
+    meta,
+    payload: {
+      byId,
+      collection: {
+        envelope,
+        headers,
+        ids
+      }
+    }
+  }
+}
+
 export const apiGeneric = (apiClient: Object) =>
 function* _apiGeneric(action: CrudAction<any>): Generator<Effect, void, any> {
   const { method, path, params, data, fetchConfig } = action.payload
-  const { success, failure } = action.meta
+  const { success, failure, schema, model } = action.meta
   const meta = {
     ...action.meta,
     fetchTime: Date.now()
@@ -36,7 +60,7 @@ function* _apiGeneric(action: CrudAction<any>): Generator<Effect, void, any> {
 
   try {
     const response = yield call(apiClient[method], path, { params, data, fetchConfig })
-    yield put({ meta, type: success, payload: response })
+    yield put(normalizeToAction(response, action, meta))
   } catch (error) {
     yield put({ meta, type: failure, payload: error, error: true })
   }

@@ -3,7 +3,7 @@
 /* eslint no-use-before-define: 0 */
 
 import { fromJS, List, Map } from 'immutable'
-import isEqual from 'lodash.isequal'
+import { isEqual } from 'lodash'
 import {
   FETCH, FETCH_ONE, CREATE, UPDATE, DELETE
 } from './actionTypes'

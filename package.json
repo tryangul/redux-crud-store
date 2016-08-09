@@ -67,8 +67,8 @@
   },
   "dependencies": {
     "immutable": ">= 3.7.6",
-    "lodash.isequal": "^4.1.2",
-    "normalizr": "^2.2.0",
+    "lodash": "^3.10.1",
+    "normalizr": "^2.2.1",
     "redux-saga": ">= 0.9.5"
   }
 }

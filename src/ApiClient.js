@@ -67,7 +67,17 @@ class ApiClient {
           method,
           headers,
           body
-        }).then(response => response[format]())
+        }).then(response => {
+          // convert headers to an object and
+          // return [headers, response.json()] (or whatever format)
+          return Promise.all[
+            Array.from(response.headers.entries()).reduce((obj, [k, v]) => {
+              obj[k] = v
+              return obj
+            }, {}),
+            response[format]()
+          ]
+        })
       }
     })
   }
