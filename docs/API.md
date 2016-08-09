@@ -1,19 +1,18 @@
-The API for redux-crud-store is quite varied, and leaves you a lot of options for customization. The code was originally an in-house module, so there may still be spots that need to be opened up for customization. Pull requests are welcome!
+The API for redux-crud-store aims to be as flexible as possible. This is still a fairly new package, and needs your input to help the API cover all use cases! Pull requests and issues are always welcome!
 
-This is a copy of the contents of src/index.js:
+For reference, this is a copy of the API-related contents of src/index.js (which is the importable API):
 
 ```js
-/* @flow */
-
 import crudSaga from './sagas'
 import crudReducer from './reducers'
 import * as crudActions from './actionTypes'
+import ApiClient from './ApiClient'
 
-export { crudSaga, crudReducer, crudActions }
+export { crudSaga, crudReducer, crudActions, ApiClient }
 
 export {
   fetchCollection, fetchRecord, createRecord, updateRecord, deleteRecord,
-  clearActionStatus, apiCall
+  clearActionStatus, apiCall, clearModelData
 } from './actionCreators'
 
 export {
@@ -21,46 +20,38 @@ export {
   selectCollection, selectRecord, selectRecordOrEmptyObject,
   selectActionStatus
 } from './selectors'
-
-export type {
-  Action, CrudAction
-} from './actionTypes'
-
-export type {
-  Selection
-} from './selectors'
 ```
 
 # crudSaga
 
 crudSaga uses redux-saga to intercept actions like FETCH, CREATE, API_CALL, and others. Its use is outlined in README.md section 1. In particular, you will need to provide it with an instance of an API client class that defines:
 
-  apiClient['get'](path, { params, data })
-  apiClient['post'](path, { params, data })
-  apiClient['put'](path, { params, data })
-  apiClient['del'](path, { params, data })
+    apiClient['get'](path, { params, data })
+    apiClient['post'](path, { params, data })
+    apiClient['put'](path, { params, data })
+    apiClient['del'](path, { params, data })
 
-  If you end up customizing the method on any of your action creators, your apiClient will also need to implement these methods.
+If you end up customizing the method on any of your action creators, your apiClient will also need to implement these methods.
 
-  An example ApiClient class is outlined in README.md section 1.
+There are ApiClient sample implementations at [src/ApiClient.js](https://github.com/uniqueway/redux-crud-store/blob/master/src/ApiClient.js) (the default client) and [docs/Sample-Api-Client-with-Superagent.md](https://github.com/uniqueway/redux-crud-store/blob/master/docs/Sample-Api-Client-with-Superagent.md).
 
 # crudReducer
 
-  The crudReducer is self-contained. It is definitely worth reading through the code along with redux DevTools to see how the state is laid out, that is, quite differently than the result that will be passed to your components by the selectors.
+The crudReducer is self-contained. It is definitely worth reading through the code along with redux DevTools to see how the state is laid out, that is, quite differently than the result that will be passed to your components by the selectors.
 
-  API-wise, the only decision you have to make is the key you pass to combineReducers. In this repository's documentation, "models" is used as the key, but you can use any key, as long as you pass state["your key"] to the selector functions from your components.
+API-wise, the only decision you have to make is the key you pass to combineReducers. In this repository's documentation, "models" is used as the key, but you can use any key, as long as you pass state.your_key to the selector functions from your components.
 
-  import { combineReducers } from 'redux'
-  import { crudReducer } from 'redux-crud-store'
+    import { combineReducers } from 'redux'
+    import { crudReducer } from 'redux-crud-store'
 
-  export default combineReducers({
-models: crudReducer,
-// other reducers go here
-})
+    export default combineReducers({
+      models: crudReducer,
+      // other reducers go here
+    })
 
 # crudActions
 
-See src/crudActions.js for a full list of action types defined by this module.
+See [src/actionTypes.js](https://github.com/uniqueway/redux-crud-store/blob/master/src/actionTypes.js) for a full list of action types defined by this module.
 
 # Action Creators
 
@@ -73,6 +64,7 @@ Example usage is outlined in README.md. If you are interested in advanced usage,
 - params (default {}) are the query params that will be passed to your API client
 - opts (default {}) can have any of the following keys, with the stated effect:
 - 'method': overrides the method of the request from the default of 'get'
+- 'fetchConfig': additional config that will be passed to the ApiClient as parameters to `fetch`
 
 The resulting payload will be split up, with the actual data being stored in the byId section, and the ids of the data being stored along with the passed params in the collections section.
 
@@ -83,6 +75,7 @@ The resulting payload will be split up, with the actual data being stored in the
 - params (default {}) are the query params that will be passed to your API client
 - opts (default {}) can have any of the following keys, with the stated effect:
 - 'method': overrides the method of the request from the default of 'get'
+- 'fetchConfig': additional config that will be passed to the ApiClient as parameters to `fetch`
 
 The payload will be stored directly in the byId section of the store.
 
@@ -94,6 +87,7 @@ The payload will be stored directly in the byId section of the store.
 - params (default {}) are the query params that will be passed to your API client
 - opts (default {}) can have any of the following keys, with the stated effect:
 - 'method': overrides the method of the request from the default of 'post'
+- 'fetchConfig': additional config that will be passed to the ApiClient as parameters to `fetch`
 
 On success, byId will be updated and all collections will be marked as needing a refresh. Additionally, actionStatus['create'] will be set.
 
@@ -105,6 +99,7 @@ On success, byId will be updated and all collections will be marked as needing a
 - params (default {}) are the query params that will be passed to your API client
 - opts (default {}) can have any of the following keys, with the stated effect:
 - 'method': overrides the method of the request from the default of 'put'
+- 'fetchConfig': additional config that will be passed to the ApiClient as parameters to `fetch`
 
 On success, byId will be updated. Additionally, actionStatus['update'] will be set.
 
@@ -115,6 +110,7 @@ On success, byId will be updated. Additionally, actionStatus['update'] will be s
 - params (default {}) are the query params that will be passed to your API client
 - opts (default {}) can have any of the following keys, with the stated effect:
 - 'method': overrides the method of the request from the default of 'del'
+- 'fetchConfig': additional config that will be passed to the ApiClient as parameters to `fetch`
 
 On success, byId will be updated and all collections will be marked as needing a refresh. Additionally, actionStatus['delete'] will be set.
 

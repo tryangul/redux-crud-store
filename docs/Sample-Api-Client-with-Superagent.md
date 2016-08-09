@@ -1,5 +1,7 @@
 The ApiClient class is fully customizable. You can write your own and drop it in as a replacement. You just need to ensure you provide get, post, put, and delete requests at a minimum (plus any other methods your code uses). Here is an alternative implementation using the [superagent](https://github.com/visionmedia/superagent) library.
 
+This implementation is a bit outdated - you should reference the ApiClient at [src/ApiClient.js](https://github.com/uniqueway/redux-crud-store/blob/master/src/ApiClient.js) to see the up to date interface.
+
     import superagent from 'superagent'
 
     # note since you are writing this code, you can specify the base_path here
