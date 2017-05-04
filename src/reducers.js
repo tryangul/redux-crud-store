@@ -118,8 +118,8 @@ export function byIdReducer(state = byIdInitialState, action) {
       const tenMinutesAgo = action.meta.now - 10 * 60 * 1000
       newState = Object.assign({}, state)
       Object.keys(state)
-        .filter(id => newState[id].fetchTime > tenMinutesAgo)
-        .forEach(id => { delete newState[id] })
+        .filter(key => newState[key].fetchTime > tenMinutesAgo)
+        .forEach(key => { delete newState[key] })
       return newState
     default:
       return state
@@ -146,7 +146,7 @@ export function collectionReducer(state = collectionInitialState, action) {
       return Object.assign({}, state, {
         params: action.meta.params,
         ids,
-        otherInfo, 
+        otherInfo,
         error: null,
         fetchTime: action.meta.fetchTime
       })
@@ -173,13 +173,12 @@ export function collectionsReducer(state = collectionsInitialState, action,
       if (action.meta.params === undefined) {
         return state
       }
-      const entry = state.find(coll => (
+      const index = state.findIndex(coll => (
         isEqual(coll, action.meta.params)
       ))
-      if (entry === undefined) {
+      if (index === -1) {
         return state.concat([collectionReducer(undefined, action)])
       }
-      const [index, existingCollection] = entry
 
       return state.slice(0, index)
                   .concat([collectionReducer(state[index], action)])
@@ -193,8 +192,8 @@ export function collectionsReducer(state = collectionsInitialState, action,
     case GARBAGE_COLLECT:
       const tenMinutesAgo = action.meta.now - 10 * 60 * 1000
       return state.filter(collection => (
-        collection.get('fetchTime') > tenMinutesAgo ||
-          collection.get('fetchTime') === null
+        collection.fetchTime > tenMinutesAgo ||
+        collection.fetchTime === null
       ))
     default:
       return state
@@ -256,7 +255,7 @@ export function actionStatusReducer(state = actionStatusInitialState, action) {
           id: action.meta.id,
           isSuccess: !action.error,
           payload: action.payload // probably null...
-        } 
+        }
       })
     default:
       return state
