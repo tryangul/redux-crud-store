@@ -68,7 +68,6 @@
     "webpack": "^1.12.14"
   },
   "dependencies": {
-    "immutable": ">= 3.7.6",
     "lodash.isequal": "^4.1.2",
     "redux-saga": ">= 0.9.5"
   }
